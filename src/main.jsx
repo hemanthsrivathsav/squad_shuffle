@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
   ArrowRightLeft,
@@ -10,18 +10,7 @@ import {
 import './styles.css';
 
 const sampleNames = [
-  'Aarav',
-  'Maya',
-  'Kabir',
-  'Isha',
-  'Vihaan',
-  'Anaya',
-  'Reyansh',
-  'Saanvi',
-  'Arjun',
-  'Nisha',
-  'Dev',
-  'Tara',
+
 ];
 
 const palette = [
@@ -64,18 +53,66 @@ function App() {
   const [groupCount, setGroupCount] = useState(4);
   const [groups, setGroups] = useState(() => makeGroups(sampleNames, 4));
   const [copied, setCopied] = useState(false);
+  const [isShuffling, setIsShuffling] = useState(false);
+  const [isSettling, setIsSettling] = useState(false);
+  const teamsStageRef = useRef(null);
+  const shuffleTimer = useRef(null);
+  const shuffleTicker = useRef(null);
+  const settleTimer = useRef(null);
 
   const names = useMemo(() => parseNames(rawNames), [rawNames]);
   const validGroupCount = Math.max(1, Math.min(Number(groupCount) || 1, Math.max(names.length, 1)));
   const canShuffle = names.length > 0;
 
+  useEffect(() => {
+    return () => {
+      window.clearTimeout(shuffleTimer.current);
+      window.clearTimeout(settleTimer.current);
+      window.clearInterval(shuffleTicker.current);
+    };
+  }, []);
+
   function randomize() {
-    if (!canShuffle) return;
-    setGroups(makeGroups(names, validGroupCount));
+    if (!canShuffle || isShuffling) return;
+
+    window.clearTimeout(shuffleTimer.current);
+    window.clearTimeout(settleTimer.current);
+    window.clearInterval(shuffleTicker.current);
+    setIsShuffling(true);
+    setIsSettling(false);
     setCopied(false);
+
+    if (window.matchMedia('(max-width: 960px)').matches) {
+      window.setTimeout(() => {
+        teamsStageRef.current?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        });
+      }, 120);
+    }
+
+    shuffleTicker.current = window.setInterval(() => {
+      setGroups(makeGroups(names, validGroupCount));
+    }, 620);
+
+    shuffleTimer.current = window.setTimeout(() => {
+      window.clearInterval(shuffleTicker.current);
+      setGroups(makeGroups(names, validGroupCount));
+      setIsShuffling(false);
+      setIsSettling(true);
+
+      settleTimer.current = window.setTimeout(() => {
+        setIsSettling(false);
+      }, 520);
+    }, 3200);
   }
 
   function loadSample() {
+    window.clearTimeout(shuffleTimer.current);
+    window.clearTimeout(settleTimer.current);
+    window.clearInterval(shuffleTicker.current);
+    setIsShuffling(false);
+    setIsSettling(false);
     setRawNames(sampleNames.join('\n'));
     setGroupCount(4);
     setGroups(makeGroups(sampleNames, 4));
@@ -102,7 +139,7 @@ function App() {
   }
 
   return (
-    <main className="app-shell">
+    <main className={`app-shell ${isShuffling ? 'is-shuffling' : ''}`}>
       <section className="command-deck">
         <div className="intro">
           <h1>Squad Shuffle</h1>
@@ -144,9 +181,9 @@ function App() {
           </div>
 
           <div className="actions">
-            <button className="primary-action" onClick={randomize} disabled={!canShuffle}>
+            <button className="primary-action" onClick={randomize} disabled={!canShuffle || isShuffling}>
               <Dice5 size={20} />
-              Shuffle Teams
+              {isShuffling ? 'Rolling...' : 'Shuffle Teams'}
             </button>
             <button className="icon-action" onClick={loadSample} aria-label="Reset sample names" title="Reset sample names">
               <RotateCcw size={19} />
@@ -163,16 +200,22 @@ function App() {
         </div>
       </section>
 
-      <section className="teams-stage" aria-label="Generated teams">
+      <section className="teams-stage" aria-label="Generated teams" ref={teamsStageRef}>
         <div className="teams-grid">
           {groups.map((team, index) => {
             const colors = palette[index % palette.length];
             return (
               <article
-                className="team-card"
-                key={`${index}-${team.join('-')}`}
+                className={`team-card ${isShuffling ? 'slot-spinning' : ''} ${isSettling ? 'slot-settling' : ''}`}
+                key={`team-${index}`}
                 style={{ '--accent-a': colors[0], '--accent-b': colors[1], '--delay': `${index * 70}ms` }}
               >
+                <div className="slot-lights" aria-hidden="true">
+                  <span />
+                  <span />
+                  <span />
+                  <span />
+                </div>
                 <div className="team-card-top">
                   <span className="team-number">{String(index + 1).padStart(2, '0')}</span>
                   <span className="team-size">{team.length} members</span>
@@ -180,7 +223,19 @@ function App() {
                 <h3>Team {index + 1}</h3>
                 <ul>
                   {team.length > 0 ? (
-                    team.map((name, memberIndex) => <li key={`${name}-${memberIndex}`}>{name}</li>)
+                    team.map((name, memberIndex) => (
+                      <li key={`${name}-${memberIndex}`} style={{ '--reel-delay': `${memberIndex * 95 + index * 35}ms` }}>
+                        <span className="reel-window">
+                          <span className="reel-track">
+                            <span>{name}</span>
+                            <span>{names[(memberIndex + index + 1) % names.length] || name}</span>
+                            <span>{names[(memberIndex + index + 3) % names.length] || name}</span>
+                            <span>{names[(memberIndex + index + 5) % names.length] || name}</span>
+                            <span>{name}</span>
+                          </span>
+                        </span>
+                      </li>
+                    ))
                   ) : (
                     <li className="empty-slot">Waiting for a name</li>
                   )}
