@@ -706,13 +706,14 @@ li {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  background: rgba(0, 0, 0, 0.9);
-  color: #f7fbff;
+  background: rgba(255, 184, 28, 0.18);
+  border: 1px solid rgba(255, 184, 28, 0.35);
+  color: #ffffff;
   padding: 1rem 2rem;
   border-radius: 8px;
   font-size: 1.1rem;
   font-weight: 500;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 4px 24px rgba(255, 184, 28, 0.18);
   z-index: 1000;
   animation: popup-fade 0.3s ease-out;
 }

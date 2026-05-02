@@ -149,8 +149,8 @@ function App() {
   const [scrambledNames, setScrambledNames] = useState({});
   const [scrambledTeamNames, setScrambledTeamNames] = useState({});
   const [isScrambling, setIsScrambling] = useState(false);
-  const [isSharedTeams, setIsSharedTeams] = useState(false);
   const [popupMessage, setPopupMessage] = useState('');
+  const [isViewingShared, setIsViewingShared] = useState(false);
 
   const [activeCaptainPick, setActiveCaptainPick] = useState(null);
 
@@ -199,7 +199,7 @@ function App() {
       setGroups(payload.groups);
       setCaptains(payload.captains || {});
       setGroupCount(String(payload.groups.length || 1));
-      setIsSharedTeams(true);
+      setIsViewingShared(true);
 
       setCopied(false);
       setLinkCopied(false);
@@ -256,9 +256,6 @@ function App() {
     setRawNames(value);
     setCopied(false);
     setLinkCopied(false);
-    if (value.trim()) {
-      setIsSharedTeams(false);
-    }
   }
 
   function updateGroupCount(value) {
@@ -277,7 +274,7 @@ function App() {
   }
 
   function randomize() {
-    if (!canShuffle || isShuffling || isPickingCaptains || isSharedTeams) return;
+    if (!canShuffle || isShuffling || isPickingCaptains) return;
 
     clearShuffleTimers();
     resetCaptainState();
@@ -474,7 +471,6 @@ function App() {
     setScrambledNames({});
     setScrambledTeamNames({});
     setIsScrambling(false);
-    setIsSharedTeams(false);
 
     window.history.replaceState(null, '', window.location.pathname);
   }
@@ -537,6 +533,86 @@ function App() {
     } catch {
       setLinkCopied(false);
     }
+  }
+
+  if (isViewingShared) {
+    return (
+      <main className="app-shell">
+        <div style={{ textAlign: 'center', padding: '2rem' }}>
+          <button
+            className="primary-action"
+            onClick={() => {
+              setIsViewingShared(false);
+              setRawNames('');
+              setGroupCount(1);
+              setGroups(createEmptyGroups(1));
+              setCaptains({});
+              window.history.replaceState(null, '', window.location.pathname);
+            }}
+          >
+            Create new team shuffle
+          </button>
+        </div>
+
+        <section className="teams-stage" aria-label="Shared teams">
+          <div className="teams-grid">
+            {groups.map((team, index) => {
+              const colors = palette[index % palette.length];
+              const captain = captains[index];
+
+              return (
+                <article
+                  key={`team-${index}`}
+                  className={`team-card ${captain ? 'has-captain' : ''}`}
+                  style={{
+                    '--accent-a': colors[0],
+                    '--accent-b': colors[1],
+                  }}
+                >
+                  <div className="team-card-top">
+                    <span className="team-number">
+                      {String(index + 1).padStart(2, '0')}
+                    </span>
+                    <span className="team-size">{team.length} members</span>
+                  </div>
+
+                  <h3>Team {index + 1}</h3>
+
+                  {captain && (
+                    <div className="captain-banner">
+                      <Crown size={15} />
+                      <span>Captain</span>
+                      <strong>{captain.name}</strong>
+                    </div>
+                  )}
+
+                  <ul>
+                    {team.length > 0 ? (
+                      team.map((name, memberIndex) => (
+                        <li
+                          key={`${name}-${memberIndex}`}
+                          className="member-row"
+                        >
+                          <span className="member-name">{name}</span>
+                          {captain?.memberIndex === memberIndex && (
+                            <span className="captain-badge">
+                              <Crown size={12} />
+                              Captain
+                            </span>
+                          )}
+                        </li>
+                      ))
+                    ) : (
+                      <li className="empty-slot">Waiting for cards</li>
+                    )}
+                  </ul>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      </main>
+    );
   }
 
   return (
@@ -648,8 +724,8 @@ function App() {
                     ? 'Cards are flying into teams...'
                     : isPickingCaptains
                       ? 'Captain spotlight is rolling...'
-                      : isSharedTeams
-                        ? 'Shared teams - add names to create new teams'
+                      : isViewingShared
+                        ? 'Viewing shared teams - create new teams below'
                         : Object.keys(captains).length > 0
                           ? 'Captains selected'
                           : 'Have fun !'}
