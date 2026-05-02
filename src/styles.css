@@ -564,6 +564,10 @@ li {
   white-space: nowrap;
 }
 
+.member-name.scrambling {
+  color: gold;
+}
+
 .member-landing {
   border-color: rgba(98, 255, 183, 0.9);
   background:

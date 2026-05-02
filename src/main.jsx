@@ -132,7 +132,7 @@ function decodeSharePayload(encoded) {
 
 function App() {
   const [rawNames, setRawNames] = useState(sampleNames.join('\n'));
-  const [groupCount, setGroupCount] = useState(4);
+  const [groupCount, setGroupCount] = useState();
   const [groups, setGroups] = useState(() => makeGroups(sampleNames, 4));
   const [captains, setCaptains] = useState({});
 
@@ -148,6 +148,7 @@ function App() {
   const [landingMemberKeys, setLandingMemberKeys] = useState([]);
   const [scrambledNames, setScrambledNames] = useState({});
   const [scrambledTeamNames, setScrambledTeamNames] = useState({});
+  const [isScrambling, setIsScrambling] = useState(false);
 
   const [activeCaptainPick, setActiveCaptainPick] = useState(null);
 
@@ -208,6 +209,7 @@ function App() {
       setLandingMemberKeys([]);
       setScrambledNames({});
       setScrambledTeamNames({});
+      setIsScrambling(false);
       setActiveCaptainPick(null);
     } catch (error) {
       console.error('Invalid shared teams link:', error);
@@ -282,6 +284,7 @@ function App() {
 
     setGroups(createEmptyGroups(validGroupCount));
     setIsShuffling(true);
+    setIsScrambling(true);
     setIsSettling(false);
     setCopied(false);
     setLinkCopied(false);
@@ -396,6 +399,7 @@ function App() {
       settleTimer.current = window.setTimeout(() => {
         setScrambledNames({});
         setScrambledTeamNames({});
+        setIsScrambling(false);
         setIsSettling(false);
       }, SETTLE_DURATION_MS);
     }, DEAL_START_DELAY_MS + dealOrder.length * dealGapMs + DEAL_FLIGHT_MS + DEAL_END_DELAY_MS);
@@ -464,6 +468,7 @@ function App() {
     setLandingMemberKeys([]);
     setScrambledNames({});
     setScrambledTeamNames({});
+    setIsScrambling(false);
 
     window.history.replaceState(null, '', window.location.pathname);
   }
@@ -737,7 +742,7 @@ function App() {
                             isLanding ? 'member-landing' : ''
                           }`}
                         >
-                          <span className="member-name">{scrambledTeamNames[`${index}-${memberIndex}`] || name}</span>
+                          <span className={`member-name ${isScrambling ? 'scrambling' : ''}`}>{scrambledTeamNames[`${index}-${memberIndex}`] || name}</span>
 
                           {isCaptain && (
                             <span className="captain-badge">
