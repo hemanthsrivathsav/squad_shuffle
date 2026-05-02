@@ -87,6 +87,10 @@ function getDealOrder(groups) {
   return order;
 }
 
+function getRandomName(names) {
+  return names[Math.floor(Math.random() * names.length)] || '???';
+}
+
 function getMemberSlots(groups) {
   return groups.flatMap((team, teamIndex) =>
     team.map((name, memberIndex) => ({
@@ -142,6 +146,8 @@ function App() {
   const [dealCards, setDealCards] = useState([]);
   const [receivingTeamIndex, setReceivingTeamIndex] = useState(null);
   const [landingMemberKeys, setLandingMemberKeys] = useState([]);
+  const [scrambledNames, setScrambledNames] = useState({});
+  const [scrambledTeamNames, setScrambledTeamNames] = useState({});
 
   const [activeCaptainPick, setActiveCaptainPick] = useState(null);
 
@@ -200,6 +206,8 @@ function App() {
       setDealCards([]);
       setReceivingTeamIndex(null);
       setLandingMemberKeys([]);
+      setScrambledNames({});
+      setScrambledTeamNames({});
       setActiveCaptainPick(null);
     } catch (error) {
       console.error('Invalid shared teams link:', error);
@@ -253,6 +261,7 @@ function App() {
     setLinkCopied(false);
   }
 
+
   function scrollToTeams() {
     teamsStageRef.current?.scrollIntoView({
       behavior: 'smooth',
@@ -268,6 +277,8 @@ function App() {
 
     const finalGroups = makeGroups(names, validGroupCount);
     const dealOrder = getDealOrder(finalGroups);
+    const isMobile = window.matchMedia('(max-width: 960px)').matches;
+    const dealGapMs = isMobile ? 500 : DEAL_GAP_MS;
 
     setGroups(createEmptyGroups(validGroupCount));
     setIsShuffling(true);
@@ -278,12 +289,31 @@ function App() {
     setReceivingTeamIndex(null);
     setLandingMemberKeys([]);
 
+    const scrambleTimer = window.setInterval(() => {
+      setScrambledNames((prev) => {
+        const newScrambled = {};
+        dealOrder.forEach((item) => {
+          newScrambled[item.dealId] = getRandomName(names);
+        });
+        return newScrambled;
+      });
+      setScrambledTeamNames((prev) => {
+        const newScrambled = {...prev};
+        Object.keys(prev).forEach(key => {
+          newScrambled[key] = getRandomName(names);
+        });
+        return newScrambled;
+      });
+    }, 80);
+
+    dealTimers.current.push(scrambleTimer);
+
     window.setTimeout(() => {
       scrollToTeams();
     }, 120);
 
     dealOrder.forEach((item, index) => {
-      const startDelay = DEAL_START_DELAY_MS + index * DEAL_GAP_MS;
+      const startDelay = DEAL_START_DELAY_MS + index * dealGapMs;
 
       const startTimer = window.setTimeout(() => {
         const stageBox = teamsStageRef.current?.getBoundingClientRect();
@@ -316,6 +346,11 @@ function App() {
           setGroups((prev) => {
             const next = prev.map((team) => [...team]);
             next[item.teamIndex].push(item.name);
+            const memberIndex = next[item.teamIndex].length - 1;
+            setScrambledTeamNames((prevTeam) => ({
+              ...prevTeam,
+              [`${item.teamIndex}-${memberIndex}`]: getRandomName(names),
+            }));
             return next;
           });
 
@@ -325,6 +360,10 @@ function App() {
             ...prev.filter((key) => key !== landingKey),
             landingKey,
           ]);
+
+          if (window.matchMedia('(max-width: 960px)').matches) {
+            scrollToTeams();
+          }
 
           const removeLandingTimer = window.setTimeout(() => {
             setLandingMemberKeys((prev) =>
@@ -354,16 +393,12 @@ function App() {
       setIsShuffling(false);
       setIsSettling(true);
 
-      if (window.matchMedia('(max-width: 960px)').matches) {
-        window.setTimeout(() => {
-          scrollToTeams();
-        }, 120);
-      }
-
       settleTimer.current = window.setTimeout(() => {
+        setScrambledNames({});
+        setScrambledTeamNames({});
         setIsSettling(false);
       }, SETTLE_DURATION_MS);
-    }, DEAL_START_DELAY_MS + dealOrder.length * DEAL_GAP_MS + DEAL_FLIGHT_MS + DEAL_END_DELAY_MS);
+    }, DEAL_START_DELAY_MS + dealOrder.length * dealGapMs + DEAL_FLIGHT_MS + DEAL_END_DELAY_MS);
 
     dealTimers.current.push(finalTimer);
   }
@@ -427,6 +462,8 @@ function App() {
     setDealCards([]);
     setReceivingTeamIndex(null);
     setLandingMemberKeys([]);
+    setScrambledNames({});
+    setScrambledTeamNames({});
 
     window.history.replaceState(null, '', window.location.pathname);
   }
@@ -626,7 +663,7 @@ function App() {
             }}
           >
             <small>Team {card.teamIndex + 1}</small>
-            <strong>{card.name}</strong>
+            <strong>{scrambledNames[card.dealId] || card.name}</strong>
           </div>
         ))}
 
@@ -700,7 +737,7 @@ function App() {
                             isLanding ? 'member-landing' : ''
                           }`}
                         >
-                          <span className="member-name">{name}</span>
+                          <span className="member-name">{scrambledTeamNames[`${index}-${memberIndex}`] || name}</span>
 
                           {isCaptain && (
                             <span className="captain-badge">
