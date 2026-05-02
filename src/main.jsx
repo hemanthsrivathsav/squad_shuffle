@@ -149,6 +149,8 @@ function App() {
   const [scrambledNames, setScrambledNames] = useState({});
   const [scrambledTeamNames, setScrambledTeamNames] = useState({});
   const [isScrambling, setIsScrambling] = useState(false);
+  const [isSharedTeams, setIsSharedTeams] = useState(false);
+  const [popupMessage, setPopupMessage] = useState('');
 
   const [activeCaptainPick, setActiveCaptainPick] = useState(null);
 
@@ -197,7 +199,7 @@ function App() {
       setGroups(payload.groups);
       setCaptains(payload.captains || {});
       setGroupCount(String(payload.groups.length || 1));
-      setRawNames(payload.groups.flat().join('\n'));
+      setIsSharedTeams(true);
 
       setCopied(false);
       setLinkCopied(false);
@@ -254,6 +256,9 @@ function App() {
     setRawNames(value);
     setCopied(false);
     setLinkCopied(false);
+    if (value.trim()) {
+      setIsSharedTeams(false);
+    }
   }
 
   function updateGroupCount(value) {
@@ -272,7 +277,7 @@ function App() {
   }
 
   function randomize() {
-    if (!canShuffle || isShuffling || isPickingCaptains) return;
+    if (!canShuffle || isShuffling || isPickingCaptains || isSharedTeams) return;
 
     clearShuffleTimers();
     resetCaptainState();
@@ -469,6 +474,7 @@ function App() {
     setScrambledNames({});
     setScrambledTeamNames({});
     setIsScrambling(false);
+    setIsSharedTeams(false);
 
     window.history.replaceState(null, '', window.location.pathname);
   }
@@ -495,7 +501,11 @@ function App() {
       await navigator.clipboard.writeText(text);
       setCopied(true);
       setLinkCopied(false);
-      window.setTimeout(() => setCopied(false), 1600);
+      setPopupMessage('Teams copied');
+      window.setTimeout(() => {
+        setCopied(false);
+        setPopupMessage('');
+      }, 1600);
     } catch {
       setCopied(false);
     }
@@ -518,9 +528,11 @@ function App() {
       await navigator.clipboard.writeText(shareUrl);
       setLinkCopied(true);
       setCopied(false);
+      setPopupMessage('Share link copied');
 
       window.setTimeout(() => {
         setLinkCopied(false);
+        setPopupMessage('');
       }, 1800);
     } catch {
       setLinkCopied(false);
@@ -636,9 +648,11 @@ function App() {
                     ? 'Cards are flying into teams...'
                     : isPickingCaptains
                       ? 'Captain spotlight is rolling...'
-                      : Object.keys(captains).length > 0
-                        ? 'Captains selected'
-                        : 'Have fun !'}
+                      : isSharedTeams
+                        ? 'Shared teams - add names to create new teams'
+                        : Object.keys(captains).length > 0
+                          ? 'Captains selected'
+                          : 'Have fun !'}
             </span>
           </div>
         </div>
@@ -768,6 +782,12 @@ function App() {
           })}
         </div>
       </section>
+
+      {popupMessage && (
+        <div className="popup-card">
+          {popupMessage}
+        </div>
+      )}
     </main>
   );
 }
